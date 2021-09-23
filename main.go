@@ -72,12 +72,6 @@ func main() {
 	http.ListenAndServe(":8080", nil)
 }
 
-// publish形式: { topic: string, message: string }
-// {"topic": "sample", "message": '{"name": "yamada ichiro", "age": "20"}'}
-
-// subscribe形式: { topic: string }
-// {"topic": "sample"}
-
 // キューイング機能の実装
 // 	- publishするときにtopic名を受け取るようにし、publish/subscribeに名前をつけて識別する。topic名は一意制約をかける。
 // 3. キューがいっぱいの時、空の時のpub/subのそれぞれの挙動を制御する。
