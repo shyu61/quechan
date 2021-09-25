@@ -18,6 +18,7 @@ type SubscribeRequest struct {
 }
 
 var queue = make(map[string][]string)
+var max_queue_size = 10000
 
 // POST /publish
 func publisher(w http.ResponseWriter, r *http.Request) {
@@ -38,6 +39,10 @@ func publisher(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
+	if len(queue[req.Topic]) > max_queue_size {
+		log.Fatal("Over max queue size")
+		return
+	}
 	queue[req.Topic] = append(queue[req.Topic], req.Message)
 	fmt.Fprintf(w, "Enqued: %v", queue)
 }
