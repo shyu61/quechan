@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	queuechan "shyu61/quechan/lib"
 )
 
 type PublishRequest struct {
@@ -71,12 +72,22 @@ func subscriber(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	// create client
+	client, err := queuechan.NewClient("foobar")
+	if err != nil {
+		log.Fatal(err)
+	}
+	topic, err := client.CreateTopic("topic-name")
+	if err != nil {
+		log.Fatal(err)
+	}
+	res := topic.Publish(&queuechan.Message{Data: []byte("payload")})
+	if res.Code != 200 {
+		log.Printf("Code=%d, Body=%s", res.Code, res.Body)
+	}
+
 	http.HandleFunc("/publish", publisher)
 	http.HandleFunc("/subscribe", subscriber)
 
 	http.ListenAndServe(":8080", nil)
 }
-
-// キューイング機能の実装
-// 	- publishするときにtopic名を受け取るようにし、publish/subscribeに名前をつけて識別する。topic名は一意制約をかける。
-// 3. キューがいっぱいの時、空の時のpub/subのそれぞれの挙動を制御する。
