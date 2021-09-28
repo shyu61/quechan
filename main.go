@@ -72,12 +72,15 @@ func subscriber(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// create client
-	client, err := queuechan.NewClient("foobar")
+	namespace := "sample-namespace"
+	topic_name := "sample-topic"
+	sub_name := "sample-sub"
+
+	client, err := queuechan.NewClient(namespace)
 	if err != nil {
 		log.Fatal(err)
 	}
-	topic, err := client.CreateTopic("topic-name")
+	topic, err := client.CreateTopic(topic_name)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -85,6 +88,13 @@ func main() {
 	if res.Code != 200 {
 		log.Printf("Code=%d, Body=%s", res.Code, res.Body)
 	}
+	sub, err := client.CreateSubscription(sub_name, queuechan.SubscriptionConfig{Topic: topic_name})
+	if err != nil {
+		log.Fatal(err)
+	}
+	sub.Receive(func(m *queuechan.Message) {
+		m.Ack()
+	})
 
 	http.HandleFunc("/publish", publisher)
 	http.HandleFunc("/subscribe", subscriber)
