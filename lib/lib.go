@@ -87,7 +87,6 @@ func (t Topic) Publish(m *Message) Response {
 
 func (s Subscription) Receive(fn func(m *Message)) error {
 	topic := s.Topic
-	fmt.Printf("===%v", topic.Name)
 	if len(pool[topic.Name]) == 0 {
 		err := errors.New("Queue is emply")
 		return err
