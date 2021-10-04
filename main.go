@@ -84,11 +84,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	res := topic.Publish(&queuechan.Message{Data: []byte("payload")})
+	res := topic.Publish(&queuechan.Message{Data: []byte("payload"), Topic: *topic})
 	if res.Code != 200 {
 		log.Printf("Code=%d, Body=%s", res.Code, res.Body)
 	}
-	sub, err := client.CreateSubscription(sub_name, queuechan.SubscriptionConfig{Topic: topic_name})
+	sub, err := client.CreateSubscription(sub_name, *topic)
 	if err != nil {
 		log.Fatal(err)
 	}

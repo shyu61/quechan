@@ -3,7 +3,6 @@ package lib
 import (
 	"errors"
 	"fmt"
-	"log"
 )
 
 var pool = make(map[string][]string) // { "topic-name": ["msg1", "msg2", ...], ... }
@@ -18,15 +17,13 @@ type Topic struct {
 
 type Subscription struct {
 	Name string
-	Config SubscriptionConfig
-}
-
-type SubscriptionConfig struct {
-	Topic string
+	Topic Topic
+	// Config SubscriptionConfig
 }
 
 type Message struct {
 	Data []byte
+	Topic Topic
 }
 
 type Response struct {
@@ -49,51 +46,58 @@ func (c Client) CreateTopic(t string) (*Topic, error) {
 		err := errors.New("Invalid topic name")
 		return nil, err
 	}
+	// 重複確認
+	_, ok := pool[t]
+	if ok {
+		err := errors.New("Can't use topic name")
+		return nil, err
+	}
 	fmt.Printf("Register topic=%s\n", t)
 	topic := Topic{Name: t}
 	pool[t] = []string{}
 	return &topic, nil
 }
 
-func (c Client) CreateSubscription(s string, t SubscriptionConfig) (*Subscription, error) {
+func (c Client) CreateSubscription(s string, t Topic) (*Subscription, error) {
 	if s == "" {
 		err := errors.New("Invalid subscription name")
 		return nil, err
 	}
-	if t.Topic == "" {
-		err := errors.New("Invalid topic name")
-		return nil, err
-	}
-	_, ok := pool[t.Topic]
+	_, ok := pool[t.Name]
 	if !ok {
 		err := errors.New("Topic not found")
 		return nil, err
 	}
 	fmt.Printf("Register subscription=%s\n", s)
-	sub := Subscription{Name: s}
+	sub := Subscription{Name: s, Topic: t}
 	return &sub, nil
 }
 
 func (t Topic) Publish(m *Message) Response {
-	key, ok := pool[t.Name]
+	_, ok := pool[t.Name]
 	if !ok {
 		res := Response{Body: "topic not found", Code: 404}
 		return res
 	}
-	key = append(key, string(m.Data))
-	log.Printf("%s: %v\n", t.Name, key) // all messages in the pool
+	pool[t.Name] = append(pool[t.Name], string(m.Data))
+	fmt.Printf("%s: %v\n", t.Name, pool[t.Name]) // all messages in the pool
 	res := Response{Body: "Ok", Code: 200}
 	return res
 }
 
 func (s Subscription) Receive(fn func(m *Message)) error {
-	topic := s.Config.Topic
-	queue := pool[topic][0]
-	pool[topic] = pool[topic][1:]
-	fmt.Printf("Dequed message=%s", queue)
+	topic := s.Topic
+	fmt.Printf("===%v", topic.Name)
+	if len(pool[topic.Name]) == 0 {
+		err := errors.New("Queue is emply")
+		return err
+	}
+	m := pool[topic.Name][0]
+	pool[topic.Name] = pool[topic.Name][1:]
+	fmt.Printf("Dequed message=%s", m)
 
-	message := Message{Data: []byte(queue)}
-	fn(&message)
+	message := Message{Data: []byte(m), Topic: topic}
+	fn(&message) // ここで内部的にAck() or Nack()が呼び出される
 
 	err := errors.New("Something went wront")
 	return err
