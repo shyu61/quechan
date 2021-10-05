@@ -93,11 +93,12 @@ func main() {
 		log.Fatal(err)
 	}
 	sub.Receive(func(m *queuechan.Message) {
+		fmt.Printf("%s", string(m.Data))
 		m.Ack()
 	})
 
 	http.HandleFunc("/publish", publisher)
 	http.HandleFunc("/subscribe", subscriber)
 
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe("127.0.0.1:8080", nil)
 }
