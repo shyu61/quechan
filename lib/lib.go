@@ -24,6 +24,7 @@ type Subscription struct {
 type Message struct {
 	Data []byte
 	Topic Topic
+	Received bool
 }
 
 type Response struct {
@@ -92,18 +93,25 @@ func (s Subscription) Receive(fn func(m *Message)) error {
 		return err
 	}
 	m := pool[topic.Name][0]
-	pool[topic.Name] = pool[topic.Name][1:]
 	fmt.Printf("Dequed message=%s", m)
 
 	message := Message{Data: []byte(m), Topic: topic}
 	fn(&message) // ここで内部的にAck() or Nack()が呼び出される
+
+	if message.Received {
+		// Ack()が呼び出された場合のみ、dequeueする
+		pool[topic.Name] = pool[topic.Name][1:]
+		return nil
+	}
 
 	err := errors.New("Something went wront")
 	return err
 }
 
 func (m Message) Ack() {
+	m.Received = true
 }
 
 func (m Message) Nack() {
+	m.Received = false
 }
