@@ -14,6 +14,11 @@ type NamespaceRequest struct {
 	Name string `json:"name"`
 }
 
+type TopicRequest struct {
+	Topic     string `json:"topic"`
+	Namespace string `json:"namespace"`
+}
+
 type PublishRequest struct {
 	Topic   string `json:"topic"`
 	Message string `json:"message"`
@@ -41,7 +46,8 @@ func handleCreateNamespace(w http.ResponseWriter, r *http.Request) {
 
 	var n NamespaceRequest
 	if err := json.Unmarshal(body, &n); err != nil {
-		log.Fatal(err)
+		fmt.Fprintf(w, "Invalid parameter errors=%s", err)
+		return
 	}
 
 	fmt.Printf("namespace name=%s\n", n.Name)
@@ -59,6 +65,54 @@ func handleCreateNamespace(w http.ResponseWriter, r *http.Request) {
 
 	database.DB.Exec("insert into namespaces(name) values(?)", n.Name)
 	fmt.Fprintf(w, "Insert namespace name=%s\n", n.Name)
+}
+
+func handleCreateTopic(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprint(w, "Invalid http method")
+		return
+	}
+
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var t TopicRequest
+	if err := json.Unmarshal(body, &t); err != nil {
+		fmt.Fprintf(w, "Invalid parameter errors=%s", err)
+		return
+	}
+
+	fmt.Printf("topic name=%s, namespace=%s", t.Topic, t.Namespace)
+
+	var count_n int
+	result_n := database.DB.QueryRow("select count(*) as count from namespaces where name = ?", t.Namespace)
+	if err := result_n.Scan(&count_n); err != nil {
+		fmt.Fprintf(w, "Error occured message=%s\n", err)
+		return
+	}
+	if count_n == 0 {
+		fmt.Fprintf(w, "Not found namespace")
+		return
+	}
+
+	var count_t int
+	result_t := database.DB.QueryRow("select count(*) from topics where name = ? and namespace_id = (select id from namespaces where name = ?)", t.Topic, t.Namespace)
+	if err := result_t.Scan(&count_t); err != nil {
+		fmt.Fprintf(w, "Error occured message=%s\n", err)
+		return
+	}
+	// namespace単位でtopic.nameは一意
+	if count_t != 0 {
+		fmt.Fprint(w, "Cannot use topic name\n")
+		return
+	}
+
+	database.DB.Exec("insert into topics(name, namespace_id) values(?, (select id from namespaces where name = ?))", t.Topic, t.Namespace)
+	fmt.Fprintf(w, "Insert topic name=%s\n", t.Topic)
 }
 
 // POST /publish
@@ -141,6 +195,7 @@ func main() {
 	})
 
 	http.HandleFunc("/namespace", handleCreateNamespace)
+	http.HandleFunc("/topic", handleCreateTopic)
 	http.HandleFunc("/publish", publisher)
 	http.HandleFunc("/subscribe", subscriber)
 
