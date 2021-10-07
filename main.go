@@ -6,8 +6,13 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"shyu61/quechan/database"
 	queuechan "shyu61/quechan/lib"
 )
+
+type NamespaceRequest struct {
+	Name string `json:"name"`
+}
 
 type PublishRequest struct {
 	Topic   string `json:"topic"`
@@ -20,6 +25,41 @@ type SubscribeRequest struct {
 
 var queue = make(map[string][]string)
 var max_queue_size = 10000
+
+func handleCreateNamespace(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprint(w, "Invalid http method")
+		return
+	}
+
+	defer r.Body.Close()
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var n NamespaceRequest
+	if err := json.Unmarshal(body, &n); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("namespace name=%s\n", n.Name)
+
+	var count int
+	result := database.DB.QueryRow("select count(*) as count from namespaces where name = ?", n.Name)
+	if err := result.Scan(&count); err != nil {
+		fmt.Fprintf(w, "Error occured message=%s\n", err)
+		return
+	}
+	if count != 0 {
+		fmt.Fprint(w, "Cannot use namespace\n")
+		return
+	}
+
+	database.DB.Exec("insert into namespaces(name) values(?)", n.Name)
+	fmt.Fprintf(w, "Insert namespace name=%s\n", n.Name)
+}
 
 // POST /publish
 func publisher(w http.ResponseWriter, r *http.Request) {
@@ -72,6 +112,9 @@ func subscriber(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	database.DB = database.Connect()
+	defer database.DB.Close()
+
 	namespace := "sample-namespace"
 	topic_name := "sample-topic"
 	sub_name := "sample-sub"
@@ -97,6 +140,7 @@ func main() {
 		m.Ack()
 	})
 
+	http.HandleFunc("/namespace", handleCreateNamespace)
 	http.HandleFunc("/publish", publisher)
 	http.HandleFunc("/subscribe", subscriber)
 
