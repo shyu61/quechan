@@ -29,6 +29,7 @@ type SubscribeRequest struct {
 
 var queue = make(map[string][]string)
 var max_queue_size = 10000
+var port = "127.0.0.1:8080"
 
 func handleCreateNamespace(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -85,7 +86,7 @@ func handleCreateTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("topic name=%s, namespace=%s", t.Topic, t.Namespace)
+	fmt.Printf("topic name=%s, namespace=%s\n", t.Topic, t.Namespace)
 
 	var count_n int
 	result_n := database.DB.QueryRow("select count(*) as count from namespaces where name = ?", t.Namespace)
@@ -133,7 +134,7 @@ func handlePulish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("Publish topic=%s, message=%s", p.Topic, p.Message)
+	fmt.Printf("Publish topic=%s, message=%s\n", p.Topic, p.Message)
 
 	// topicの存在確認(db)
 	var count int
@@ -151,7 +152,7 @@ func handlePulish(w http.ResponseWriter, r *http.Request) {
 	_, ok := queue[p.Topic]
 	if !ok {
 		fmt.Fprintf(w, "Not found topic")
-		fmt.Printf("topic=%s exists in db, but not in queue. Data is mismatched. Please check.", p.Topic)
+		fmt.Printf("topic=%s exists in db, but not in queue. Data is mismatched. Please check.\n", p.Topic)
 		return
 	}
 
@@ -184,7 +185,7 @@ func handleSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("Subscribe topic=%s", s.Topic)
+	fmt.Printf("Subscribe topic=%s\n", s.Topic)
 
 	// topicの存在確認
 	var count int
@@ -217,5 +218,6 @@ func main() {
 	http.HandleFunc("/publish", handlePulish)
 	http.HandleFunc("/subscribe", handleSubscribe)
 
-	http.ListenAndServe("127.0.0.1:8080", nil)
+	fmt.Printf("Served %s\n", port)
+	http.ListenAndServe(port, nil)
 }
