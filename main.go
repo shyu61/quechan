@@ -115,8 +115,7 @@ func handleCreateTopic(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Insert topic name=%s\n", t.Topic)
 }
 
-// POST /publish
-func publisher(w http.ResponseWriter, r *http.Request) {
+func handlePulish(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, "Invalid http method")
@@ -129,17 +128,34 @@ func publisher(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	var req PublishRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		log.Fatal(err)
-	}
-
-	if len(queue[req.Topic]) > max_queue_size {
-		log.Fatal("Over max queue size")
+	var p PublishRequest
+	if err := json.Unmarshal(body, &p); err != nil {
+		fmt.Fprintf(w, "Invalid parameter errors=%s", err)
 		return
 	}
-	queue[req.Topic] = append(queue[req.Topic], req.Message)
-	fmt.Fprintf(w, "Enqued: %v", queue)
+
+	fmt.Printf("Publish topic=%s, message=%s", p.Topic, p.Message)
+
+	// topicの存在確認
+	var count int
+	result := database.DB.QueryRow("select count(*) from topics where name = ?", p.Topic)
+	if err := result.Scan(&count); err != nil {
+		fmt.Fprintf(w, "Error occured message=%s\n", err)
+		return
+	}
+	if count == 0 {
+		fmt.Fprintf(w, "Not found topic")
+		return
+	}
+
+	// queueの上限確認
+	if len(queue[p.Topic]) > max_queue_size {
+		fmt.Fprintf(w, "Over max queue size")
+		return
+	}
+
+	queue[p.Topic] = append(queue[p.Topic], p.Message)
+	fmt.Fprintf(w, "Enqued")
 }
 
 // POST /subscribe
@@ -196,7 +212,7 @@ func main() {
 
 	http.HandleFunc("/namespace", handleCreateNamespace)
 	http.HandleFunc("/topic", handleCreateTopic)
-	http.HandleFunc("/publish", publisher)
+	http.HandleFunc("/publish", handlePulish)
 	http.HandleFunc("/subscribe", subscriber)
 
 	http.ListenAndServe("127.0.0.1:8080", nil)
