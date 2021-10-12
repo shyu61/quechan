@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"shyu61/quechan/database"
-	queuechan "shyu61/quechan/lib"
 )
 
 type NamespaceRequest struct {
@@ -212,31 +211,6 @@ func handleSubscribe(w http.ResponseWriter, r *http.Request) {
 func main() {
 	database.DB = database.Connect()
 	defer database.DB.Close()
-
-	namespace := "sample-namespace"
-	topic_name := "sample-topic"
-	sub_name := "sample-sub"
-
-	client, err := queuechan.NewClient(namespace)
-	if err != nil {
-		log.Fatal(err)
-	}
-	topic, err := client.CreateTopic(topic_name)
-	if err != nil {
-		log.Fatal(err)
-	}
-	res := topic.Publish(&queuechan.Message{Data: []byte("payload"), Topic: *topic})
-	if res.Code != 200 {
-		log.Printf("Code=%d, Body=%s", res.Code, res.Body)
-	}
-	sub, err := client.CreateSubscription(sub_name, *topic)
-	if err != nil {
-		log.Fatal(err)
-	}
-	sub.Receive(func(m *queuechan.Message) {
-		fmt.Printf("%s", string(m.Data))
-		m.Ack()
-	})
 
 	http.HandleFunc("/namespace", handleCreateNamespace)
 	http.HandleFunc("/topic", handleCreateTopic)
