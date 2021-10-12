@@ -136,7 +136,7 @@ func handlePulish(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("Publish topic=%s, message=%s", p.Topic, p.Message)
 
-	// topicの存在確認
+	// topicの存在確認(db)
 	var count int
 	result := database.DB.QueryRow("select count(*) from topics where name = ?", p.Topic)
 	if err := result.Scan(&count); err != nil {
@@ -145,6 +145,14 @@ func handlePulish(w http.ResponseWriter, r *http.Request) {
 	}
 	if count == 0 {
 		fmt.Fprintf(w, "Not found topic")
+		return
+	}
+
+	// topicの存在確認(queue)
+	_, ok := queue[p.Topic]
+	if !ok {
+		fmt.Fprintf(w, "Not found topic")
+		fmt.Printf("topic=%s exists in db, but not in queue. Data is mismatched. Please check.", p.Topic)
 		return
 	}
 
@@ -158,9 +166,8 @@ func handlePulish(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Enqued")
 }
 
-// POST /subscribe
-func subscriber(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+func handleSubscribe(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprint(w, "Invalid http method")
 		return
@@ -172,13 +179,34 @@ func subscriber(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
-	var req SubscribeRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		log.Fatal(err)
+	var s SubscribeRequest
+	if err := json.Unmarshal(body, &s); err != nil {
+		fmt.Fprintf(w, "Invalid parameter errors=%s", err)
+		return
 	}
 
-	fmt.Fprintf(w, "Dequed: %s", queue[req.Topic][0])
-	queue[req.Topic] = queue[req.Topic][1:]
+	fmt.Printf("Subscribe topic=%s", s.Topic)
+
+	// topicの存在確認
+	var count int
+	result := database.DB.QueryRow("select count(*) from topics where name = ?", s.Topic)
+	if err := result.Scan(&count); err != nil {
+		fmt.Fprintf(w, "Error occured message=%s\n", err)
+		return
+	}
+	if count == 0 {
+		fmt.Fprintf(w, "Not found topic")
+		return
+	}
+
+	// queueの存在確認
+	if len(queue[s.Topic]) == 0 {
+		fmt.Fprintf(w, "Queue is empty")
+		return
+	}
+
+	fmt.Fprintf(w, "%s", queue[s.Topic][0])
+	queue[s.Topic] = queue[s.Topic][1:]
 }
 
 func main() {
@@ -213,7 +241,7 @@ func main() {
 	http.HandleFunc("/namespace", handleCreateNamespace)
 	http.HandleFunc("/topic", handleCreateTopic)
 	http.HandleFunc("/publish", handlePulish)
-	http.HandleFunc("/subscribe", subscriber)
+	http.HandleFunc("/subscribe", handleSubscribe)
 
 	http.ListenAndServe("127.0.0.1:8080", nil)
 }
