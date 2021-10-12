@@ -209,9 +209,29 @@ func handleSubscribe(w http.ResponseWriter, r *http.Request) {
 	queue[s.Topic] = queue[s.Topic][1:]
 }
 
+func initialize() {
+	rows, err := database.DB.Query("select name from topics")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var n string
+		err := rows.Scan(&n)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Load topic=%s", n)
+		queue[n] = []string{}
+	}
+}
+
 func main() {
 	database.DB = database.Connect()
 	defer database.DB.Close()
+
+	initialize()
 
 	http.HandleFunc("/namespace", handleCreateNamespace)
 	http.HandleFunc("/topic", handleCreateTopic)
