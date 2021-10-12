@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"shyu61/quechan/database"
+	"strings"
 )
 
 type NamespaceRequest struct {
@@ -209,6 +210,24 @@ func handleSubscribe(w http.ResponseWriter, r *http.Request) {
 	queue[s.Topic] = queue[s.Topic][1:]
 }
 
+func handleGetQueueLen(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprint(w, "Invalid http method")
+		return
+	}
+	topic := strings.TrimPrefix(r.URL.Path, "/queue/")
+	fmt.Printf("topic=%s\n", topic)
+
+	msgs, ok := queue[topic]
+	if !ok {
+		fmt.Fprintf(w, "Not registered\n")
+		return
+	}
+	fmt.Fprintf(w, "%d\n", len(msgs))
+}
+
+
 // dbのtopicの読み込み（Queueは揮発性）
 func initialize() {
 	rows, err := database.DB.Query("select name from topics")
@@ -238,6 +257,9 @@ func main() {
 	http.HandleFunc("/topic", handleCreateTopic)
 	http.HandleFunc("/publish", handlePulish)
 	http.HandleFunc("/subscribe", handleSubscribe)
+
+	// 指定したtopicのmessage数を返却
+	http.HandleFunc("/queue/", handleGetQueueLen)
 
 	fmt.Printf("Served %s\n", port)
 	http.ListenAndServe(port, nil)
