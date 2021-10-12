@@ -213,7 +213,7 @@ func handleSubscribe(w http.ResponseWriter, r *http.Request) {
 func handleQueue(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodDelete {
 		w.WriteHeader(http.StatusMethodNotAllowed)
-		fmt.Fprint(w, "Invalid http method")
+		fmt.Fprint(w, "Invalid http method\n")
 		return
 	}
 
@@ -237,7 +237,7 @@ func handleQueue(w http.ResponseWriter, r *http.Request) {
 		}
 		_, err := database.DB.Exec("delete from topics where name = ?", topic)
 		if err != nil {
-			fmt.Fprintf(w, "Failed to delete error=%s", err)
+			fmt.Fprintf(w, "Failed to delete error=%s\n", err)
 			return
 		}
 		delete(queue, topic)
