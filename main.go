@@ -46,7 +46,7 @@ func handleCreateNamespace(w http.ResponseWriter, r *http.Request) {
 
 	var n NamespaceRequest
 	if err := json.Unmarshal(body, &n); err != nil {
-		fmt.Fprintf(w, "Invalid parameter errors=%s", err)
+		fmt.Fprintf(w, "Invalid parameter errors=%s\n", err)
 		return
 	}
 
@@ -82,7 +82,7 @@ func handleCreateTopic(w http.ResponseWriter, r *http.Request) {
 
 	var t TopicRequest
 	if err := json.Unmarshal(body, &t); err != nil {
-		fmt.Fprintf(w, "Invalid parameter errors=%s", err)
+		fmt.Fprintf(w, "Invalid parameter errors=%s\n", err)
 		return
 	}
 
@@ -130,7 +130,7 @@ func handlePulish(w http.ResponseWriter, r *http.Request) {
 
 	var p PublishRequest
 	if err := json.Unmarshal(body, &p); err != nil {
-		fmt.Fprintf(w, "Invalid parameter errors=%s", err)
+		fmt.Fprintf(w, "Invalid parameter errors=%s\n", err)
 		return
 	}
 
@@ -181,7 +181,7 @@ func handleSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	var s SubscribeRequest
 	if err := json.Unmarshal(body, &s); err != nil {
-		fmt.Fprintf(w, "Invalid parameter errors=%s", err)
+		fmt.Fprintf(w, "Invalid parameter errors=%s\n", err)
 		return
 	}
 
@@ -195,17 +195,17 @@ func handleSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if count == 0 {
-		fmt.Fprintf(w, "Not found topic")
+		fmt.Fprintf(w, "Not found topic\n")
 		return
 	}
 
 	// queueの存在確認
 	if len(queue[s.Topic]) == 0 {
-		fmt.Fprintf(w, "Queue is empty")
+		fmt.Fprintf(w, "Queue is empty\n")
 		return
 	}
 
-	fmt.Fprintf(w, "%s", queue[s.Topic][0])
+	fmt.Fprintf(w, "%s\n", queue[s.Topic][0])
 	queue[s.Topic] = queue[s.Topic][1:]
 }
 
@@ -222,7 +222,7 @@ func initialize() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("Load topic=%s", n)
+		fmt.Printf("Load topic=%s\n", n)
 		queue[n] = []string{}
 	}
 }
