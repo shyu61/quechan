@@ -209,6 +209,7 @@ func handleSubscribe(w http.ResponseWriter, r *http.Request) {
 	queue[s.Topic] = queue[s.Topic][1:]
 }
 
+// dbのtopicの読み込み（Queueは揮発性）
 func initialize() {
 	rows, err := database.DB.Query("select name from topics")
 	if err != nil {
